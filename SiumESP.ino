@@ -9,9 +9,9 @@ const char* ssid        = ".........";
 const char* password    = ".........";
 const char* mqtt_server = "xxx-xx-xxx-xxx-xxx.us-east-2.compute.amazonaws.com";
 
-const int led_rojo  =  0;
-const int led_azul  = 12;
-const int led_verde = 16;
+const int led_rojo  = 16; // indica los cambios de estado
+const int led_azul  =  0; // indica que se pudo conectar al broker
+const int led_verde = 12; // indica que se pudo conectar a la red WIFI
 const int vibr_Pin  = 14;
 
 bool flag1              = false;
@@ -26,27 +26,24 @@ PubSubClient client( espClient );
 RTC_DS3231 rtc;
 
 void setup_wifi() {
-  digitalWrite( led_rojo, LOW );
+  //digitalWrite(led_verde,LOW);
   delay( 10 );
   // We start by connecting to a WiFi network
   Serial.println();
   Serial.print( "Connecting to " );
   Serial.println( ssid );
-  WiFi.mode( WIFI_STA );
+
   WiFi.begin( ssid, password );
 
   while ( WiFi.status() != WL_CONNECTED ) {
     delay( 500 );
     Serial.print( "." );
   }
-
-  randomSeed( micros() );
-
-  Serial.println( "" );
+  digitalWrite( led_verde, HIGH );
+  Serial.println("");
   Serial.println( "WiFi connected" );
   Serial.println( "IP address: " );
   Serial.println( WiFi.localIP() );
-  digitalWrite( led_rojo,HIGH );
 }
 
 void reconnect() {
@@ -73,7 +70,7 @@ void reconnect() {
 }
 
 bool enviarPaqueteCambio(){
-  digitalWrite( led_verde, LOW );
+  digitalWrite( led_rojo, LOW );
   String aux = "CAMBIO." + codigoMaquinaria + "." +
                 turno + "." + horaInicio + "." + horaFin;
   char paquete[200];
@@ -82,7 +79,7 @@ bool enviarPaqueteCambio(){
   
   if(flag){
     Serial.println( paquete );
-    digitalWrite( led_verde, HIGH );
+    digitalWrite( led_rojo, HIGH );
     //delay( 1000 );
     return true;
   }else{
@@ -100,8 +97,6 @@ bool enviarPaqueteEstado( int estado ){
   
   if( flag ){
     Serial.println( paquete );
-    //digitalWrite(led_rojo, HIGH);
-    //delay( 1000 );
   }else{
     Serial.println( "mensaje no enviado" );
   }
@@ -116,13 +111,10 @@ void callback( char* topic, byte* payload, unsigned int length ) {
   }
   Serial.println();
 
-  // Switch on the LED if an 1 was received as first character
   if ( (char) payload[0] == '1' ) {
-    digitalWrite( BUILTIN_LED, LOW );   // Turn the LED on (Note that LOW is the voltage level
-    // but actually the LED is on; this is because
-    // it is acive low on the ESP-01)
+    digitalWrite( BUILTIN_LED, LOW );
   } else {
-    digitalWrite( BUILTIN_LED, HIGH );  // Turn the LED off by making the voltage HIGH
+    digitalWrite( BUILTIN_LED, HIGH );
   }
 
 }
@@ -134,9 +126,14 @@ long TP_init(){
 }
 
 void setup() {
+  Serial.begin( 115200 );
   pinMode( led_verde, OUTPUT );
   pinMode( led_azul, OUTPUT );
+  pinMode( led_rojo, OUTPUT );
+  pinMode( vibr_Pin, INPUT );
+  
   setup_wifi();
+  
   client.setServer( mqtt_server, 1883 );
   client.setCallback( callback );
   if ( !rtc.begin() ) {
@@ -145,15 +142,13 @@ void setup() {
   // Ponemos en hora, solo la primera vez, luego comentar y volver a cargar.
   // Ponemos en hora con los valores de la fecha y la hora en que el sketch ha sido compilado.
   // rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-  pinMode( vibr_Pin, INPUT );
-  Serial.begin( 115200 );
 }
 
 void loop() {
   if ( !client.connected() ) {
     reconnect();
   }
-  digitalWrite(led_verde, LOW);
+  
   client.loop();
   long val_sensor = TP_init();
   delay(50);
@@ -162,11 +157,11 @@ void loop() {
   
   enviarPaqueteEstado( estado );
   
-  if ( val_sensor >= DEFAULT_VIBRATION && !flag1 ){
+  if ( estado == 1 && !flag1 ){
     DateTime now = rtc.now();
     horaInicio = String(now.hour()) + ":" + String(now.minute()) + ":" + String(now.second());
     flag1 = true;
-  } else if ( val_sensor < DEFAULT_VIBRATION && flag1 ){
+  } else if ( estado == 0 && flag1 ){
     DateTime now = rtc.now();
     horaFin = String(now.hour()) + ":" + String(now.minute()) + ":" + String(now.second());
     enviarPaqueteCambio();
