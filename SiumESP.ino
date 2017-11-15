@@ -83,7 +83,7 @@ bool enviarPaqueteCambio(){
   if(flag){
     Serial.println( paquete );
     digitalWrite( led_verde, HIGH );
-    delay( 1000 );
+    //delay( 1000 );
     return true;
   }else{
     Serial.println( "mensaje no enviado" );
@@ -101,7 +101,7 @@ bool enviarPaqueteEstado( int estado ){
   if( flag ){
     Serial.println( paquete );
     //digitalWrite(led_rojo, HIGH);
-    delay( 1000 );
+    //delay( 1000 );
   }else{
     Serial.println( "mensaje no enviado" );
   }
@@ -155,15 +155,18 @@ void loop() {
   }
   digitalWrite(led_verde, LOW);
   client.loop();
-  long sensor = TP_init();
+  long val_sensor = TP_init();
   delay(50);
-  enviarPaqueteEstado( sensor );
-  if ( sensor >= DEFAULT_VIBRATION && !flag1 ){
+  
+  int estado = val_sensor >= DEFAULT_VIBRATION ? 1 : 0;
+  
+  enviarPaqueteEstado( estado );
+  
+  if ( val_sensor >= DEFAULT_VIBRATION && !flag1 ){
     DateTime now = rtc.now();
     horaInicio = String(now.hour()) + ":" + String(now.minute()) + ":" + String(now.second());
     flag1 = true;
-  }
-  else if( sensor < DEFAULT_VIBRATION && flag1 ){
+  } else if ( val_sensor < DEFAULT_VIBRATION && flag1 ){
     DateTime now = rtc.now();
     horaFin = String(now.hour()) + ":" + String(now.minute()) + ":" + String(now.second());
     enviarPaqueteCambio();
