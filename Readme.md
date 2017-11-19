@@ -1,6 +1,6 @@
 # SIUMESP
 
-SiumESP is an Arduino client for MQTT using NODEMCU lolin. It is also part of the [SIUM project](https://github.com/isaacNuflo/SIUMDAO).
+SiumESP is an Arduino client for MQTT using NODEMCU lolin. It is also part of the [SIUM project](https://github.com/rimegaray/proyectodsw).
 
 ## Depends on the following libraries:
 - [PubSubClient](https://github.com/knolleary/pubsubclient)
