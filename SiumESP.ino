@@ -5,14 +5,14 @@
 
 #define DEFAULT_VIBRATION 500
 
-const char* ssid        = ".........";
-const char* password    = ".........";
+const char* ssid        = "..........";
+const char* password    = "..........";
 const char* mqtt_server = "xxx-xx-xxx-xxx-xxx.us-east-2.compute.amazonaws.com";
 
-const int led_rojo  = 16; // indica los cambios de estado
-const int led_azul  =  0; // indica que se pudo conectar al broker
-const int led_verde = 12; // indica que se pudo conectar a la red WIFI
-const int vibr_Pin  = 14;
+const int led_rojo  = 16; // machinery turn ON/OFF
+const int led_azul  =  0; // connect to the broker
+const int led_verde = 12; // connect to WIFI
+const int vibr_Pin  = 14; // read the vibration
 
 bool flag1              = false;
 char *topic             = "/soldexa/prensa/1";
@@ -89,18 +89,15 @@ int getTurno(int h, int m ){
 }
 
 bool enviarPaqueteCambio( int h, int m ){
-  digitalWrite( led_rojo, LOW );
   turno = getTurno(h,m);
-  String aux = "CAMBIO." + codigoMaquinaria + "." +
+  String tmp = "CAMBIO." + codigoMaquinaria + "." +
                 turno + "." + horaInicio + "." + horaFin;
   char paquete[200];
-  aux.toCharArray( paquete, 200 );
+  tmp.toCharArray( paquete, 200 );
   bool flag = client.publish( topic, paquete );
   
   if( flag ) {
     Serial.println( paquete );
-    digitalWrite( led_rojo, HIGH );
-    //delay( 1000 );
     return true;
   } else {
     Serial.println( "mensaje no enviado" );
@@ -109,9 +106,9 @@ bool enviarPaqueteCambio( int h, int m ){
 }
 
 bool enviarPaqueteEstado( int estado ){
-  String aux = "ESTADO." + codigoMaquinaria + "." + estado;
+  String tmp = "ESTADO." + codigoMaquinaria + "." + estado;
   char paquete[200];
-  aux.toCharArray( paquete, 200 );
+  tmp.toCharArray( paquete, 200 );
   bool flag = client.publish( topic, paquete );
   
   if( flag ) {
@@ -182,6 +179,7 @@ void loop() {
                  String( now.minute() ) + ":" + 
                  String( now.second() );
     flag1 = true;
+    digitalWrite( led_rojo, HIGH );
   } else if ( estado == 0 && flag1 ) {
     DateTime now = rtc.now();
     int h = now.hour();
@@ -191,6 +189,7 @@ void loop() {
               String( m ) + ":" + 
               String( s );
     enviarPaqueteCambio( h, m );
+    digitalWrite( led_rojo, LOW );
     flag1 = false;
   }
   delay( 200 );
