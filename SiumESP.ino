@@ -3,7 +3,7 @@
 #include <Wire.h>
 #include "RTClib.h"
 
-#define DEFAULT_VIBRATION 1000
+#define DEFAULT_VIBRATION 500
 
 const char* ssid        = ".........";
 const char* password    = ".........";
@@ -20,13 +20,13 @@ String codigoMaquinaria = "1";
 String horaInicio;
 String horaFin;
 int turno;
+int estado;
 
 WiFiClient espClient;
 PubSubClient client( espClient );
 RTC_DS3231 rtc;
 
 void setup_wifi() {
-  //digitalWrite(led_verde,LOW);
   delay( 10 );
   // We start by connecting to a WiFi network
   Serial.println();
@@ -40,7 +40,7 @@ void setup_wifi() {
     Serial.print( "." );
   }
   digitalWrite( led_verde, HIGH );
-  Serial.println("");
+  Serial.println( "" );
   Serial.println( "WiFi connected" );
   Serial.println( "IP address: " );
   Serial.println( WiFi.localIP() );
@@ -53,7 +53,7 @@ void reconnect() {
     Serial.print( "Attempting MQTT connection..." );
     // Create a random client ID
     String clientId = "ESP8266Client-";
-    clientId += String( random(0xffff), HEX );
+    clientId += String( random( 0xffff ), HEX );
     // Attempt to connect
     if ( client.connect( clientId.c_str() ) ) {
       Serial.println( "connected" );
@@ -69,33 +69,52 @@ void reconnect() {
   }
 }
 
-bool enviarPaqueteCambio(){
+int getTurno(int h, int m ){
+  //turno 1: 07:15 - 17:00
+  //turno 3: 21:15 - 07:00
+  if( ( h == 7 && m >= 15 ) || 
+      ( h > 7 && h < 17 )  ||
+      ( h == 17 && m == 0 ) ) {
+    return 1;
+  }
+  
+  if( ( h == 21 && m>=15 ) ||
+      ( h > 21 && h <= 24 ) ||
+      ( h >= 0 && h < 7 ) ||
+      ( h == 7 && m == 0 ) ) {
+    return 3;
+  }
+  
+  return 2;
+}
+
+bool enviarPaqueteCambio( int h, int m ){
   digitalWrite( led_rojo, LOW );
+  turno = getTurno(h,m);
   String aux = "CAMBIO." + codigoMaquinaria + "." +
                 turno + "." + horaInicio + "." + horaFin;
   char paquete[200];
   aux.toCharArray( paquete, 200 );
   bool flag = client.publish( topic, paquete );
   
-  if(flag){
+  if( flag ) {
     Serial.println( paquete );
     digitalWrite( led_rojo, HIGH );
     //delay( 1000 );
     return true;
-  }else{
+  } else {
     Serial.println( "mensaje no enviado" );
     return false;
   }
 }
 
 bool enviarPaqueteEstado( int estado ){
-  //digitalWrite( led_rojo, LOW );
   String aux = "ESTADO." + codigoMaquinaria + "." + estado;
   char paquete[200];
   aux.toCharArray( paquete, 200 );
   bool flag = client.publish( topic, paquete );
   
-  if( flag ){
+  if( flag ) {
     Serial.println( paquete );
   }else{
     Serial.println( "mensaje no enviado" );
@@ -106,7 +125,8 @@ void callback( char* topic, byte* payload, unsigned int length ) {
   Serial.print( "Message arrived [" );
   Serial.print( topic );
   Serial.print( "] " );
-  for ( int i = 0; i < length; i++ ) {
+  
+  for ( int i = 0; i < length; i ++ ) {
     Serial.print( (char) payload[i] );
   }
   Serial.println();
@@ -116,12 +136,11 @@ void callback( char* topic, byte* payload, unsigned int length ) {
   } else {
     digitalWrite( BUILTIN_LED, HIGH );
   }
-
 }
 
 long TP_init(){
   delay( 10 );
-  long measurement = pulseIn ( vibr_Pin, HIGH );  //wait for the pin to get HIGH and returns measurement
+  long measurement = pulseIn ( vibr_Pin, HIGH );
   return measurement;
 }
 
@@ -152,19 +171,26 @@ void loop() {
   client.loop();
   long val_sensor = TP_init();
   delay(50);
-  
+
   int estado = val_sensor >= DEFAULT_VIBRATION ? 1 : 0;
   
   enviarPaqueteEstado( estado );
   
-  if ( estado == 1 && !flag1 ){
+  if ( estado == 1 && !flag1 ) {
     DateTime now = rtc.now();
-    horaInicio = String(now.hour()) + ":" + String(now.minute()) + ":" + String(now.second());
+    horaInicio = String( now.hour() ) + ":" + 
+                 String( now.minute() ) + ":" + 
+                 String( now.second() );
     flag1 = true;
-  } else if ( estado == 0 && flag1 ){
+  } else if ( estado == 0 && flag1 ) {
     DateTime now = rtc.now();
-    horaFin = String(now.hour()) + ":" + String(now.minute()) + ":" + String(now.second());
-    enviarPaqueteCambio();
+    int h = now.hour();
+    int m = now.minute();
+    int s = now.second();
+    horaFin = String( h ) + ":" + 
+              String( m ) + ":" + 
+              String( s );
+    enviarPaqueteCambio( h, m );
     flag1 = false;
   }
   delay( 200 );
