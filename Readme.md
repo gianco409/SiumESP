@@ -10,6 +10,11 @@ SiumESP is an Arduino client for MQTT using NODEMCU lolin. It is also part of th
 ## Additional boards Manager:
 - [http://arduino.esp8266.com/stable/package_esp8266com_index.json](http://arduino.esp8266.com/stable/package_esp8266com_index.json)
 
+## Hardware
+- Nodemcu
+- DS3231
+- SW 420
+
 <h1 align = "center">
-  <img src = "hardware_device.jpg" />
+  <img src = "Hardware_device.png" />
 </h1>
